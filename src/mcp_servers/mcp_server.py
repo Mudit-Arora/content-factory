@@ -5,8 +5,13 @@ import os
 from typing import Any
 
 import httpx
+import uvicorn
 from mcp.server import Server
-from mcp.types import Tool, TextContent
+from mcp.server.sse import SseServerTransport
+from mcp.server.stdio import stdio_server
+from mcp.types import TextContent, Tool
+from starlette.applications import Starlette
+from starlette.routing import Route
 
 server = Server("content-factory-toolkit")
 
@@ -338,8 +343,40 @@ async def _run_smoke_test(
                         continue
 
 
+def create_sse_app() -> Starlette:
+    """Create a Starlette app with SSE transport for the MCP server."""
+    sse = SseServerTransport("/messages/")
+
+    async def handle_sse(request):
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await server.run(
+                streams[0], streams[1], server.create_initialization_options()
+            )
+
+    return Starlette(
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Route("/messages/", endpoint=sse.handle_post_message, methods=["POST"]),
+        ],
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Run as SSE server on this port (e.g., --port 42200).",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1).",
+    )
     parser.add_argument(
         "--smoke-test",
         action="store_true",
@@ -372,5 +409,15 @@ if __name__ == "__main__":
                 poll_until_complete=args.smoke_poll_until_complete,
             )
         )
+    elif args.port:
+        app = create_sse_app()
+        uvicorn.run(app, host=args.host, port=args.port)
     else:
-        server.run()
+        # Run as stdio server for MCP
+        async def main():
+            async with stdio_server() as (read_stream, write_stream):
+                await server.run(
+                    read_stream, write_stream, server.create_initialization_options()
+                )
+
+        asyncio.run(main())
