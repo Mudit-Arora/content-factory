@@ -10,7 +10,11 @@ from mcp.types import Tool, TextContent
 
 server = Server("content-factory-toolkit")
 
-
+# Environment variable names
+FREEPIK_API_KEY_ENV = "FREEPIK_API_KEY"
+FREEPIK_MYSTIC_URL_ENV = "FREEPIK_MYSTIC_URL"
+YUTORI_API_KEY_ENV = "YUTORI_API_KEY"
+YUTORI_API_URL = "https://api.yutori.com/v1/research/tasks"
 
 
 def _get_env(name: str) -> str:
@@ -27,6 +31,27 @@ async def _post_to_freepik(url: str, payload: dict[str, Any]) -> dict[str, Any]:
     }
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+
+async def _post_to_yutori(payload: dict[str, Any]) -> dict[str, Any]:
+    headers = {
+        "X-API-Key": _get_env(YUTORI_API_KEY_ENV),
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(YUTORI_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+
+async def _get_from_yutori(task_id: str) -> dict[str, Any]:
+    headers = {
+        "X-API-Key": _get_env(YUTORI_API_KEY_ENV),
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.get(f"{YUTORI_API_URL}/{task_id}", headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -113,6 +138,58 @@ async def list_tools() -> list[Tool]:
                 "required": ["task_id"],
             },
         ),
+        Tool(
+            name="yutori_scrape_trends",
+            description=(
+                "Scrape trending topics for a given niche/industry using Yutori's "
+                "Research API. Returns structured trend data including titles, "
+                "descriptions, source URLs, and relevance scores."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query for niche/industry (e.g., 'sustainable fashion trends 2024')",
+                    },
+                    "num_results": {
+                        "type": "integer",
+                        "description": "Number of trend results to return (default: 10)",
+                        "default": 10,
+                    },
+                    "user_timezone": {
+                        "type": "string",
+                        "description": "User's timezone for contextual awareness (e.g., 'America/Los_Angeles')",
+                    },
+                    "user_location": {
+                        "type": "string",
+                        "description": "User's location (e.g., 'San Francisco, CA, US')",
+                    },
+                    "webhook_url": {
+                        "type": "string",
+                        "description": "Optional webhook URL to receive results when research completes",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="yutori_research_status",
+            description=(
+                "Fetch status and results for a Yutori research task. "
+                "Returns status (queued, running, succeeded, failed) and results when complete."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Yutori research task ID from yutori_scrape_trends response",
+                    },
+                },
+                "required": ["task_id"],
+            },
+        ),
     ]
 
 
@@ -155,6 +232,67 @@ async def call_tool(name: str, arguments: dict):
                 return [TextContent(type="text", text=json.dumps(response.json()))]
         except Exception as exc:
             return [TextContent(type="text", text=f"Freepik error: {exc}")]
+    if name == "yutori_scrape_trends":
+        num_results = arguments.get("num_results", 10)
+        payload: dict[str, Any] = {
+            "query": arguments["query"],
+        }
+        if arguments.get("user_timezone"):
+            payload["user_timezone"] = arguments["user_timezone"]
+        if arguments.get("user_location"):
+            payload["user_location"] = arguments["user_location"]
+        if arguments.get("webhook_url"):
+            payload["webhook_url"] = arguments["webhook_url"]
+        # Add structured output schema for trend results
+        payload["task_spec"] = {
+            "output_schema": {
+                "type": "json",
+                "json_schema": {
+                    "type": "object",
+                    "properties": {
+                        "trends": {
+                            "type": "array",
+                            "maxItems": num_results,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "Title of the trend",
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Brief description of the trend",
+                                    },
+                                    "url": {
+                                        "type": "string",
+                                        "description": "Source URL for more details",
+                                    },
+                                    "relevance_score": {
+                                        "type": "number",
+                                        "description": "Relevance score from 0 to 1",
+                                    },
+                                },
+                                "required": ["title", "description", "url"],
+                            },
+                        },
+                    },
+                    "required": ["trends"],
+                },
+            },
+        }
+        try:
+            data = await _post_to_yutori(payload)
+            return [TextContent(type="text", text=json.dumps(data))]
+        except Exception as exc:
+            return [TextContent(type="text", text=f"Yutori error: {exc}")]
+    if name == "yutori_research_status":
+        task_id = arguments["task_id"]
+        try:
+            data = await _get_from_yutori(task_id)
+            return [TextContent(type="text", text=json.dumps(data))]
+        except Exception as exc:
+            return [TextContent(type="text", text=f"Yutori error: {exc}")]
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
