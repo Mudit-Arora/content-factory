@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Factory - AI Social Media Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Content Factory</h1>
+            <p class="subtitle">Generate a week's worth of social media content with AI</p>
+        </header>
+
+        <main>
+            <form id="contentForm">
+                <div class="form-group">
+                    <label for="brand">Describe your brand or niche:</label>
+                    <textarea
+                        id="brand"
+                        name="brand_description"
+                        rows="6"
+                        required
+                        minlength="50"
+                        maxlength="1000"
+                        placeholder="E.g., Sustainable fashion brand targeting millennial women, focuses on eco-friendly materials and ethical manufacturing. Our aesthetic is minimalist with earthy tones and natural textures..."
+                    ></textarea>
+                    <div class="char-count">
+                        <span id="charCount">0</span>/1000 characters (minimum 50)
+                    </div>
+                </div>
+                <button type="submit" id="submitBtn">Generate Content</button>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p class="loading-text">Generating your content...</p>
+                <p class="loading-subtext">This typically takes 2-3 minutes. We're researching trends, creating posts, and generating images.</p>
+            </div>
+
+            <div id="result" class="result hidden">
+                <div class="success">
+                    <span class="success-icon">&#10003;</span>
+                    <h2>Content Generated Successfully!</h2>
+                    <p>Your ZIP file should download automatically.</p>
+                    <p>It contains:</p>
+                    <ul>
+                        <li>social_posts.xlsx - Spreadsheet with 7 posts</li>
+                        <li>images/ - 7 AI-generated images</li>
+                    </ul>
+                    <button id="downloadAgain" class="secondary-btn">Download Again</button>
+                </div>
+            </div>
+
+            <div id="error" class="error hidden">
+                <span class="error-icon">&#10007;</span>
+                <h2>Something went wrong</h2>
+                <p id="errorMessage"></p>
+                <button id="tryAgain" class="secondary-btn">Try Again</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by AI - Built for the Hackathon</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

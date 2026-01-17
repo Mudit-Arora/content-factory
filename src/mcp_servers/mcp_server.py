@@ -200,8 +200,8 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
-    base_url = _get_env(FREEPIK_MYSTIC_URL_ENV)
     if name == "freepik_mystic_generate":
+        base_url = _get_env(FREEPIK_MYSTIC_URL_ENV)
         payload = {
             "prompt": arguments["prompt"],
             "resolution": arguments.get("resolution"),
@@ -226,6 +226,7 @@ async def call_tool(name: str, arguments: dict):
         except Exception as exc:
             return [TextContent(type="text", text=f"Freepik error: {exc}")]
     if name == "freepik_mystic_status":
+        base_url = _get_env(FREEPIK_MYSTIC_URL_ENV)
         task_id = arguments["task_id"]
         try:
             async with httpx.AsyncClient(timeout=60) as client:
@@ -355,10 +356,13 @@ def create_sse_app() -> Starlette:
                 streams[0], streams[1], server.create_initialization_options()
             )
 
+    async def handle_messages(request):
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
     return Starlette(
         routes=[
             Route("/sse", endpoint=handle_sse),
-            Route("/messages/", endpoint=sse.handle_post_message, methods=["POST"]),
+            Route("/messages/", endpoint=handle_messages, methods=["POST"]),
         ],
     )
 
