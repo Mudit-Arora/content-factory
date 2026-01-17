@@ -8,7 +8,7 @@ export default function DashboardPage() {
         <Sidebar />
       </div>
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-800 bg-panel/70 px-6 py-4">
+          <header className="flex items-center justify-between border-b border-slate-800 bg-panel/70 px-6 py-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Dashboard
@@ -17,9 +17,14 @@ export default function DashboardPage() {
               AI Content Creator Studio
             </h1>
           </div>
-          <div className="rounded-full border border-slate-700/70 bg-slate-900/60 px-4 py-2 text-xs text-slate-300">
-            MCP Host: local server ready
-          </div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-slate-700/70 bg-slate-900/60 px-4 py-2 text-xs text-slate-300">
+                MCP Host: local server ready
+              </div>
+              <button className="rounded-full border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-xs font-semibold text-indigo-100 transition hover:border-indigo-300/70">
+                Login
+              </button>
+            </div>
         </header>
         <main className="flex-1 overflow-hidden">
           <Chat />

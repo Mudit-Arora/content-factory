@@ -122,12 +122,9 @@ async def _poll_freepik_status(
     return {}
 
 
-@app.post("/tools/get_research", response_model=List[ResearchResult])
-async def get_research(payload: ResearchRequest):
-    prompt = payload.prompt.strip()
-    if not prompt:
-        return JSONResponse(status_code=400, content={"error": "Prompt is empty"})
-
+async def _cline_orchestrate_research(prompt: str) -> list[ResearchResult]:
+    # This function represents the Cline orchestration layer.
+    # Today it calls MCP tools directly; swap this with real Cline orchestration later.
     yutori = await _call_tool_json(
         "yutori_scrape_trends",
         {
@@ -136,11 +133,6 @@ async def get_research(payload: ResearchRequest):
         },
     )
     trends = _extract_trends(yutori)
-    if not trends:
-        return JSONResponse(
-            status_code=502, content={"error": "No trends returned from Yutori"}
-        )
-
     results: list[ResearchResult] = []
     for trend in trends[:6]:
         title = trend.get("title") or prompt
@@ -155,13 +147,13 @@ async def get_research(payload: ResearchRequest):
     return results
 
 
-@app.post("/tools/generate_images", response_model=List[GeneratedImage])
-async def generate_images(payload: ImageRequest):
+async def _cline_orchestrate_images(prompts: list[str]) -> list[GeneratedImage]:
+    # This function represents the Cline orchestration layer.
+    # Today it calls MCP tools directly; swap this with real Cline orchestration later.
     attempts = int(os.getenv("MYSTIC_POLL_ATTEMPTS", "5"))
     delay_s = float(os.getenv("MYSTIC_POLL_DELAY_S", "4"))
-
     images: list[GeneratedImage] = []
-    for prompt in payload.prompts:
+    for prompt in prompts:
         generate = await _call_tool_json(
             "freepik_mystic_generate",
             {
@@ -178,12 +170,30 @@ async def generate_images(payload: ImageRequest):
                 image_url = _find_first_url(status_payload)
 
         if not image_url:
-            return JSONResponse(
-                status_code=502,
-                content={"error": f"Freepik did not return an image for '{prompt}'"},
-            )
+            raise RuntimeError(f"Freepik did not return an image for '{prompt}'")
         images.append(GeneratedImage(url=image_url, alt=prompt))
     return images
+
+
+@app.post("/tools/get_research", response_model=List[ResearchResult])
+async def get_research(payload: ResearchRequest):
+    prompt = payload.prompt.strip()
+    if not prompt:
+        return JSONResponse(status_code=400, content={"error": "Prompt is empty"})
+    results = await _cline_orchestrate_research(prompt)
+    if not results:
+        return JSONResponse(
+            status_code=502, content={"error": "No trends returned from Yutori"}
+        )
+    return results
+
+
+@app.post("/tools/generate_images", response_model=List[GeneratedImage])
+async def generate_images(payload: ImageRequest):
+    try:
+        return await _cline_orchestrate_images(payload.prompts)
+    except RuntimeError as exc:
+        return JSONResponse(status_code=502, content={"error": str(exc)})
 
 
 @app.get("/health")

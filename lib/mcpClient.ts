@@ -9,13 +9,10 @@ export type GeneratedImage = {
   alt: string;
 };
 
-const MCP_BASE_URL =
-  process.env.NEXT_PUBLIC_MCP_BASE_URL ?? "http://localhost:8000";
-
 const request = async <T>(path: string, payload: unknown): Promise<T> => {
   let response: Response;
   try {
-    response = await fetch(`${MCP_BASE_URL}${path}`, {
+    response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -24,7 +21,7 @@ const request = async <T>(path: string, payload: unknown): Promise<T> => {
     const detail =
       error instanceof Error ? error.message : "Unknown network error";
     throw new Error(
-      `MCP connection failed. Check NEXT_PUBLIC_MCP_BASE_URL. ${detail}`
+      `MCP connection failed. Check server proxy. ${detail}`
     );
   }
 
@@ -37,11 +34,11 @@ const request = async <T>(path: string, payload: unknown): Promise<T> => {
 };
 
 export async function getResearch(prompt: string): Promise<ResearchResult[]> {
-  return request<ResearchResult[]>("/tools/get_research", { prompt });
+  return request<ResearchResult[]>("/api/mcp/get_research", { prompt });
 }
 
 export async function generateImages(
   prompts: string[]
 ): Promise<GeneratedImage[]> {
-  return request<GeneratedImage[]>("/tools/generate_images", { prompts });
+  return request<GeneratedImage[]>("/api/mcp/generate_images", { prompts });
 }

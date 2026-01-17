@@ -11,11 +11,11 @@ from mcp.types import Tool, TextContent
 server = Server("content-factory-toolkit")
 
 # Environment variable names
-FREEPIK_API_KEY_ENV = os.getenv("FREEPIK_API_KEY")
-FREEPIK_MYSTIC_URL_ENV = os.getenv("FREEPIK_MYSTIC_URL")
-YUTORI_API_KEY_ENV = os.getenv("YUTORI_API_KEY")
-YUTORI_API_URL_ENV = os.getenv("YUTORI_API_URL")
-YUTORI_API_URL_DEFAULT = os.getenv("YUTORI_API_URL_DEFAULT")
+FREEPIK_API_KEY_ENV = "FREEPIK_API_KEY"
+FREEPIK_MYSTIC_URL_ENV = "FREEPIK_MYSTIC_URL"
+YUTORI_API_KEY_ENV = "YUTORI_API_KEY"
+YUTORI_API_URL_ENV = "YUTORI_API_URL"
+YUTORI_API_URL_DEFAULT = "https://api.yutori.com/v1/research/tasks"
 
 
 def _get_env(name: str, default: str | None = None) -> str:
