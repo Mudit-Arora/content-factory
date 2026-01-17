@@ -55,6 +55,9 @@ async def run_content_generation(brand_description: str, output_dir: str) -> dic
     agent = await create_content_agent(output_dir)
 
     try:
+        print(
+            f"Agent created, starting generation for brand: {brand_description[:100]}..."
+        )
         result = await agent.ainvoke(
             {
                 "messages": [
@@ -66,7 +69,23 @@ async def run_content_generation(brand_description: str, output_dir: str) -> dic
             },
             {"recursion_limit": 100},  # Allow many tool calls for 7 posts
         )
+        print(f"Agent completed. Number of messages: {len(result.get('messages', []))}")
+
+        # Log the last few messages for debugging
+        if "messages" in result:
+            for i, msg in enumerate(
+                result["messages"][-3:], start=max(0, len(result["messages"]) - 3)
+            ):
+                msg_type = type(msg).__name__
+                content_preview = str(msg.content if hasattr(msg, "content") else msg)[
+                    :200
+                ]
+                print(f"Message {i} ({msg_type}): {content_preview}...")
+
         return {"status": "success", "result": result}
     except Exception as e:
         import traceback
-        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+
+        error_trace = traceback.format_exc()
+        print(f"Agent execution error: {e}\n{error_trace}")
+        return {"status": "error", "error": str(e), "traceback": error_trace}

@@ -118,7 +118,26 @@ async def generate_content(request: GenerateRequest):
             if "result" in result and "messages" in result["result"]:
                 messages = result["result"]["messages"]
                 if messages:
-                    last_message = str(messages[-1].content if hasattr(messages[-1], 'content') else messages[-1])
+                    last_msg = messages[-1]
+                    # Extract content from different message types
+                    if hasattr(last_msg, "content"):
+                        if isinstance(last_msg.content, list):
+                            # Handle list of content blocks
+                            last_message = " ".join(
+                                (
+                                    str(block.get("text", block))
+                                    if isinstance(block, dict)
+                                    else str(block)
+                                )
+                                for block in last_msg.content
+                            )
+                        else:
+                            last_message = str(last_msg.content)
+                    else:
+                        last_message = str(last_msg)
+
+                    print(f"Last agent message: {last_message}")
+
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -133,6 +152,7 @@ async def generate_content(request: GenerateRequest):
         raise
     except Exception as e:
         import traceback
+
         print(f"Unexpected error: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
@@ -147,7 +167,9 @@ async def health_check():
 
 
 # Serve static files for frontend (mount last to not override API routes)
-static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static")
+static_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static"
+)
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
